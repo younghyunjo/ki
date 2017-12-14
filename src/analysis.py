@@ -1,5 +1,4 @@
-import music
-import query
+
 import hamming
 import csv
 import plotly
