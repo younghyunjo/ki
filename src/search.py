@@ -41,11 +41,10 @@ class Search():
         mdf = self._mdf
         if (mid != None):
             mdf = self._mdf.where(col('mid') == mid)
-        mdf = mdf.coalesce(100)
         return self._signature.do(mdf, 'mcode', 'mid')
 
     def _candidate_get(self, signatured_qdf, signatured_mdf, threshold):
-        return self._signature.hamming_distance(signatured_mdf, self._music_alias, signatured_qdf, self._query_alias, threshold)
+        return self._signature.hamming_distance(signatured_mdf, signatured_qdf.rdd.first()['signature'], threshold)
 
     def _debug(self, searched_df):
         searched_df = searched_df.withColumn('diff', abs(searched_df.hamming_distance - searched_df.actual_hamming_distance))
@@ -71,25 +70,22 @@ class Search():
         signatured_mdf = self._signatured_mdf(mid)
 
         signatured_mdf.persist()
-        signatured_mdf.describe().show()
+        # signatured_mdf.describe().show()
 
         # signatured_mdf.show()
 
-
-
-
         candidate_df = self._candidate_get(signatured_qdf, signatured_mdf, threshold)
         candidate_df.describe().show()
-        # candidate_df.show()
-        candidate_df.persist()
+        candidate_df.show()
+        # candidate_df.persist()
         #
         # signatured_qdf.unpersist()
         # signatured_mdf.unpersist()
 
-        searched_df = self._actual_get(candidate_df, threshold)
+        # searched_df = self._actual_get(candidate_df, threshold)
         # candidate_df.unpersist()
-        searched_df.describe().show()
+        # searched_df.describe().show()
 
         # self._debug(searched_df)
 
-        return searched_df
+        # return searched_df

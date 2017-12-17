@@ -52,58 +52,43 @@ class Signature():
         return sliced_window
 
     def _signaturing(self, window):
-        # signature = 0
         signature = ''
 
         for sample_index in self._sampling_index:
             word_index, bit_index = _sample_index_to_word_and_bit_index(sample_index)
-            # signature = ((signature) << 1) + _sampling(window, word_index, bit_index)
             signature += _sampling(window, word_index, bit_index)
         return signature
 
-    def _data_slicing(self, df, data_col, meta_col):
-        slicing = self._slicing
+    def _slicing_and_signaturing(self, data):
+        sliced_window = []
+        limit = len(data) - self._window_size + 1
+
+        for i in range(0, limit, WINDOW_STEP):
+            if(i + self._window_size) > len(data):
+                i = len(data) - self._window_size
+            w = data[i:i + self._window_size]
+            w = self._signaturing(w)
+            sliced_window.append((w, i))
+        return sliced_window
+
+    def _slice_and_signature(self, df, data_col, meta_col):
+        slicing = self._slicing_and_signaturing
         sliced_rdd = df.select(meta_col, data_col).rdd.\
             map(lambda w : (w[meta_col], slicing(w[data_col]))).\
             flatMapValues(lambda sliced : sliced)
-        return sliced_rdd.map(lambda w : pyspark.sql.Row(meta=w[0], window=w[1][0], origin=w[1][1])).toDF()
-
-    def _window_signaturing(self, df):
-        signaturing_udf = udf(self._signaturing, StringType())
-        # signaturing_udf = udf(self._signaturing, LongType())
-        return df.withColumn('signature', signaturing_udf(df.window))
+        return sliced_rdd.map(lambda w : pyspark.sql.Row(meta=w[0], signature=w[1][0], origin=w[1][1])).toDF()
 
     def _hamming_distance_calc(self, a, b):
-        # return round((bin(a^b)[2:].count('1'))/self._signature_length, 2)
         x = int(a, 2) ^ int(b, 2)
         return round(((bin(x)[2:].count('1')) / (self._signature_length)), 2)
 
-    def _signature_aliasing(self, df, nickname):
-        return df.select(col('meta').alias('meta' + nickname),
-                         col('window').alias('window' + nickname),
-                         col('origin').alias('origin' + nickname),
-                         col('signature').alias('signature' + nickname))
-
-    def hamming_distance(self, df1, df1_alias, df2, df2_alias, threshold):
-        hamming_distance_calc_udf = udf(self._hamming_distance_calc, DoubleType())
-
-        # df1.show(df1.count())
-
-        df1 = self._signature_aliasing(df1, df1_alias)
-        df2 = self._signature_aliasing(df2, df2_alias)
-
-        if (df1.count() > df2.count()):
-            xjoined_df = df2.crossJoin(df1)
-        else:
-            xjoined_df = df1.crossJoin(df2)
-
-        searched_df = xjoined_df.withColumn('hamming_distance', hamming_distance_calc_udf(xjoined_df['signature' + df1_alias], xjoined_df['signature' + df2_alias]))\
-            .drop('signature' + df1_alias, 'signature' + df2_alias)
-
-        searched_df = searched_df.filter(col('hamming_distance') <= threshold)
-        # searched_df.show(searched_df.count())
-        return searched_df
+    def hamming_distance(self, df1, reference, threshold):
+        # df1.describe().show()
+        return  df1.rdd.map(lambda r : pyspark.sql.Row(meta=r['meta'],
+                                                       origin=r['origin'],
+                                                       hamming_distance=self._hamming_distance_calc(r['signature'], reference)))\
+                   .filter(lambda v : v['hamming_distance'] <= threshold)\
+                   .toDF()
 
     def do(self, df, data_col, meta_col):
-        windows_df = self._data_slicing(df, data_col, meta_col)
-        return self._window_signaturing(windows_df)
+        return self._slice_and_signature(df, data_col, meta_col)

@@ -73,7 +73,7 @@ def _query_parsing(sc, ss, query_file):
 
 def do(sc, ss):
     music_file = ['/home/younghyun/work/younghyunjo/ki/given/data/songdb_1.bin',
-                  # '/home/younghyun/work/younghyunjo/ki/given/data/songdb_0.bin',
+                  '/home/younghyun/work/younghyunjo/ki/given/data/songdb_0.bin',
                   # '/home/younghyun/work/younghyunjo/ki/given/data/songdb_2.bin',
                   # '/home/younghyun/work/younghyunjo/ki/given/data/songdb_3.bin'
     ]
