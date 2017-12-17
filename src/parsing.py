@@ -41,13 +41,8 @@ def _music_db_parser(file):
             music = (music_id, file, num_codes)
             meta.append(music)
             code.append(codes)
-
-            # TODO FOR DEBUG
-            # return (meta, code)
-
         f.close()
         return (meta, code)
-
 
 def _music_parsing(sc, ss, music_file):
     music_file_rdd = sc.parallelize(music_file, len(music_file))
@@ -86,5 +81,10 @@ def do(sc, ss):
 
     meta_df, code_df = _music_parsing(sc, ss, music_file)
     query_df = _query_parsing(sc, ss, query_file)
+
+    # code_df.coalesce(4)
+    # query_df.coalesce(4)
+    # code_df.persist()
+    # query_df.persist()
 
     return meta_df, code_df, query_df
