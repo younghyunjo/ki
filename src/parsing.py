@@ -74,17 +74,15 @@ def _query_parsing(sc, ss, query_file):
 def do(sc, ss):
     music_file = ['/home/younghyun/work/younghyunjo/ki/given/data/songdb_1.bin',
                   '/home/younghyun/work/younghyunjo/ki/given/data/songdb_0.bin',
-                  # '/home/younghyun/work/younghyunjo/ki/given/data/songdb_2.bin',
-                  # '/home/younghyun/work/younghyunjo/ki/given/data/songdb_3.bin'
+                  '/home/younghyun/work/younghyunjo/ki/given/data/songdb_2.bin',
+                  '/home/younghyun/work/younghyunjo/ki/given/data/songdb_3.bin'
     ]
     query_file = "/home/younghyun/work/younghyunjo/ki/given/data/query.bin"
 
     meta_df, code_df = _music_parsing(sc, ss, music_file)
     query_df = _query_parsing(sc, ss, query_file)
 
-    # code_df.coalesce(4)
-    # query_df.coalesce(4)
-    # code_df.persist()
-    # query_df.persist()
+    code_df.persist()
+    query_df.persist()
 
     return meta_df, code_df, query_df

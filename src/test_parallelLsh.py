@@ -1,15 +1,15 @@
+from unittest import TestCase
+
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 
+import parallel_lsh
 import parsing as music_query_parser
-import parallel_search
 import hdhash
 
-THRESHOLD = 0.35
 NR_BIT_PER_WORD = 32
 
-if __name__ == '__main__':
-    #TODO Get DB File, Query File by Arguments
+class TestParallelLsh(TestCase):
 
     window_size = 155
     band = 31
@@ -20,10 +20,14 @@ if __name__ == '__main__':
     ss = SparkSession.builder.appName('SearchMusic').master('local[*]').getOrCreate()
 
     meta_df, music_df, query_df = music_query_parser.do(sc, ss)
+
     h = hdhash.HdHash(band_size * NR_BIT_PER_WORD, row)
-    search = parallel_search.ParallelSearch(ss, query_df, music_df, meta_df, window_size, band, row, h)
 
-    search.by_qid(0, THRESHOLD)
+    p = parallel_lsh.ParallelLsh(ss, window_size, band, row, h)
 
-    ss.stop()
-    sc.stop()
+
+    def test_lookup_table(self):
+        mdf = self.music_df
+        mdf = self.p.lookup_table(mdf, 'mcode', 'mid')
+        mdf.persist()
+        mdf.show()
