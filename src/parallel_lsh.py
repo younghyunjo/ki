@@ -44,9 +44,9 @@ class ParallelLsh():
 
     def _hashing(self, df, column_code):
         udf_hashing = udf(self._lsh.hashing, ArrayType(IntegerType(), False))
-        return df.withColumn(self.COLUMN_HASHED, udf_hashing(df[column_code])).drop(column_code).persist()
+        return df.withColumn(self.COLUMN_HASHED, udf_hashing(df[column_code])).persist()
 
-    def _lookup_rdd_get(self, hashed_df, column_id):
+    def _lookup_rdd_get(self, hashed_df, column_id, column_code):
         column_hash = self.COLUMN_HASHED
         lookup_table= self._lsh.lookup_table
 
@@ -54,17 +54,18 @@ class ParallelLsh():
                      .flatMapValues(lambda r: r) \
                      .map(lambda w: (w[0], w[1][0], w[1][1]))
 
-    def _lookup_df_get(self, lookup_rdd, column_id):
+    def _lookup_df_get(self, lookup_rdd, column_id, column_code):
         schema = StructType([StructField(column_id, IntegerType(), False),
                              StructField('lookup_key', StringType(), False),
                              StructField('lookup_value', ArrayType(LongType(), False), False)
+                             #StructField(column_code, ArrayType(LongType(), False), False)
                              ])
         lookup_df = self._ss.createDataFrame(lookup_rdd, schema)
         return lookup_df
 
     def lookup_table(self, df, column_code, column_id):
         hashed_df = self._hashing(df, column_code)
-        lookup_rdd = self._lookup_rdd_get(hashed_df, column_id)
-        lookup_df = self._lookup_df_get(lookup_rdd, column_id)
+        lookup_rdd = self._lookup_rdd_get(hashed_df, column_id, column_code)
+        lookup_df = self._lookup_df_get(lookup_rdd, column_id, column_code)
         return lookup_df
 

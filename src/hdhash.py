@@ -1,6 +1,19 @@
 import random
 
+NR_BIT_PER_BYTE = 8
 NR_BIT_PER_WORD = 32
+
+def _distance(a, b):
+    return bin(a^b)[2:].count('1')
+
+def hamming_distance(a, b):
+    if len(a) != len(b):
+        return 0.0
+
+    sum_distance = 0
+    for i in range(len(a)):
+        sum_distance += _distance(a[i], b[i])
+    return round(sum_distance/(len(a)*NR_BIT_PER_WORD), 2)
 
 def _random_numbers_get(nr, limits):
     random_number = []
@@ -44,8 +57,8 @@ class HdHash():
         return
 
     def hashing(self, data):
-        if len(data) > int(self._nr_input_bits/8):
-            data = data[:int(self._nr_input_bits/8)]
+        if len(data) > int(self._nr_input_bits/NR_BIT_PER_BYTE):
+            data = data[:int(self._nr_input_bits/NR_BIT_PER_BYTE)]
         value = ''
         for windex, bindex in self._sample_index.items():
             if windex >= len(data):

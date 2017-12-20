@@ -37,8 +37,9 @@ def _music_db_parser(file):
             if num_codes <=0:
                 continue
             raw_code = struct.unpack('I' * num_codes, f.read(4 * num_codes))
-            codes = (music_id, raw_code)
+            codes = (music_id, raw_code, file)
             music = (music_id, file, num_codes)
+            # if music_id == 40:
             meta.append(music)
             code.append(codes)
         f.close()
@@ -52,7 +53,8 @@ def _music_parsing(sc, ss, music_file):
 
     meta_df = meta_rdd.map(lambda m: pyspark.sql.Row(mid=m[0], file=m[1])).toDF()
     code_schema = StructType([StructField('mid', IntegerType(), False),
-                              StructField('mcode', ArrayType(LongType(), False), False)])
+                              StructField('mcode', ArrayType(LongType(), False), False),
+                              StructField('file', StringType(), False)])
     code_df = ss.createDataFrame(code_rdd, code_schema)
 
     # meta_df.show()
@@ -72,17 +74,18 @@ def _query_parsing(sc, ss, query_file):
     return query_df
 
 def do(sc, ss):
-    music_file = ['/home/younghyun/work/younghyunjo/ki/given/data/songdb_1.bin',
-                  '/home/younghyun/work/younghyunjo/ki/given/data/songdb_0.bin',
-                  '/home/younghyun/work/younghyunjo/ki/given/data/songdb_2.bin',
-                  '/home/younghyun/work/younghyunjo/ki/given/data/songdb_3.bin'
+    music_file = [
+                  '/home/younghyun/work/younghyunjo/ki/given/data/songdb_1.bin',
+                  # '/home/younghyun/work/younghyunjo/ki/given/data/songdb_0.bin',
+                  # '/home/younghyun/work/younghyunjo/ki/given/data/songdb_2.bin',
+                  # '/home/younghyun/work/younghyunjo/ki/given/data/songdb_3.bin'
     ]
     query_file = "/home/younghyun/work/younghyunjo/ki/given/data/query.bin"
 
     meta_df, code_df = _music_parsing(sc, ss, music_file)
     query_df = _query_parsing(sc, ss, query_file)
 
-    code_df.persist()
-    query_df.persist()
+    # code_df.persist()
+    # query_df.persist()
 
     return meta_df, code_df, query_df
