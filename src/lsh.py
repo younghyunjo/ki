@@ -11,7 +11,10 @@ def _dict_append(dict, key, value):
     return dict
 
 def _split(data, split_size):
-    return [data[i:i + split_size] for i in range(0, len(data), split_size)]
+    splited = [data[i:i + split_size] for i in range(0, len(data), split_size)]
+    if len(splited[-1]) != split_size:
+        del(splited[-1])
+    return splited
 
 class Lsh():
     def __init__(self, window_size, band, row, hash):

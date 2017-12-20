@@ -1,8 +1,5 @@
 import pyspark
 from pyspark.sql.types import *
-
-# from pyspark.sql.functions import *
-
 from pyspark.sql.functions import count
 from pyspark.sql.functions import col
 from pyspark.sql.functions import explode
@@ -11,22 +8,23 @@ from pyspark.sql.window import Window
 
 import parallel_lsh
 
-
 NR_BIT_PER_WORD = 32
 
 class ParallelSearch():
-    def __init__(self, ss, qdf, mdf, meta_df, window_size, band, row, hash, distance_calc):
+    def __init__(self, ss, qdf, mdf, window_size, band, row, hash, distance_calc):
         self._lsh = parallel_lsh.ParallelLsh(ss, window_size, band, row, hash)
         self._qdf = qdf.persist(pyspark.StorageLevel.MEMORY_AND_DISK_SER_2)
         self._mdf = mdf.persist(pyspark.StorageLevel.MEMORY_AND_DISK_SER_2)
         self._lookup_qdf = self._lsh.lookup_table(qdf, 'qcode', 'qid').persist(pyspark.StorageLevel.MEMORY_AND_DISK_SER_2)
         self._lookup_mdf = self._lsh.lookup_table(mdf, 'mcode', 'mid').persist(pyspark.StorageLevel.MEMORY_AND_DISK_SER_2)
-        self._meta_df = meta_df
+
         self._window_size = window_size
         self._band_size = int(window_size/band)
         self._distance_calc = distance_calc
-        self._lookup_mdf.count()
-        self._lookup_qdf.count()
+
+        #TODO debug
+        # self._lookup_mdf.show()
+        # self._lookup_qdf.show()
 
     def _candidate_get(self, lookup_qdf, lookup_mdf):
         return lookup_qdf.drop('lookup_value').join(lookup_mdf, 'lookup_key', 'inner') \
@@ -54,7 +52,8 @@ class ParallelSearch():
         distance_get = __distance(self._window_size, self._band_size, self._distance_calc)
         udf_distance = udf(distance_get, FloatType())
         searched_df = df.withColumn('threshold', udf_distance(df['qcode'], df['mcode'], df['col']))\
-                        .where(col('threshold') <= threshold)
+                        .where(col('threshold') <= threshold)\
+                        .drop('qcode', 'mcode')
 
         return searched_df
 
@@ -70,8 +69,13 @@ class ParallelSearch():
         if mid != None:
             lookup_mdf = lookup_mdf.where(col('mid') == mid)
 
-        candidate_df = self._candidate_get(lookup_qdf, lookup_mdf)
-        searched_df = self._candidate_verify(candidate_df, theshold)
-        searched_df.show()
-        return searched_df
+        candidate_df = self._candidate_get(lookup_qdf, lookup_mdf).persist()
 
+        if candidate_df.count() == 0:
+            candidate_df.unpersist()
+            return []
+
+        searched_df = self._candidate_verify(candidate_df, theshold)
+        candidate_df.unpersist()
+
+        return searched_df.collect()

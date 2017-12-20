@@ -71,4 +71,5 @@ class HdHash():
                 value += bits[b]
         if value == '':
             value = '0'
+
         return int(value, 2)
